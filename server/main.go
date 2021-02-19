@@ -42,15 +42,23 @@ func getRuleForPath(alias Alias, path string) (Rule, error) {
 		}
 		return rule, nil
 	}
-	return Rule{}, nil
+	return Rule{Action: "default"}, nil
+}
+
+func getSubdomain(host string) (string, error) {
+	var re = regexp.MustCompile(`^(?:([a-zA-Z0-9](?:[-a-zA-Z0-9]{0,61}[a-zA-Z0-9])?)\.)?(?:localhost|(?:[a-zA-Z0-9]{1,2}(?:[-a-zA-Z0-9]{0,252}[a-zA-Z0-9])?)\.(?:[a-zA-Z]{2,63}))(?::(?:\d+))?$`)
+
+	matches := re.FindStringSubmatch(host)
+	if len(matches) < 2 || matches[1] == "" {
+		return "", fmt.Errorf("no subdomain found")
+	}
+	return matches[1], nil
 }
 
 func determineAction(aliases map[string]Alias, request *http.Request) (string, string, http.FileSystem) {
-	var re = regexp.MustCompile(`^(?:([a-zA-Z0-9](?:[-a-zA-Z0-9]{0,61}[a-zA-Z0-9])?)\.)?(?:localhost|(?:[a-zA-Z0-9]{1,2}(?:[-a-zA-Z0-9]{0,252}[a-zA-Z0-9])?)\.(?:[a-zA-Z]{2,63}))(?::(?:\d+))?$`)
+	subdomain, err := getSubdomain(request.Host)
 
-	matches := re.FindStringSubmatch(request.Host)
-
-	if len(matches) < 2 || matches[1] == "" {
+	if err != nil {
 		fsys, err := fs.Sub(staticPath, "static")
 		if err != nil {
 			panic(err)
@@ -59,10 +67,10 @@ func determineAction(aliases map[string]Alias, request *http.Request) (string, s
 	}
 
 	path := request.URL.Path
-	port := matches[1]
+	port := subdomain
 
 	// Check if port is a number
-	_, err := strconv.Atoi(port)
+	_, err = strconv.Atoi(port)
 	if err != nil {
 		// NaN - check if subdomain is alias
 		if value, ok := aliases[port]; ok {
@@ -71,7 +79,8 @@ func determineAction(aliases map[string]Alias, request *http.Request) (string, s
 			if err != nil {
 				return "", "", nil
 			}
-			if rule.Action == "noop" {
+			if rule.Action == "default" {
+			} else if rule.Action == "noop" {
 				return "noop", "", nil
 			} else {
 				return rule.Action, rule.Target, nil
@@ -99,18 +108,18 @@ func main() {
 		for _, alias := range config.Aliases {
 			aliases[alias.Alias] = alias
 		}
+		log.Println(fmt.Sprintf("Loaded %d subdomain aliases.", len(aliases)))
 	}
 
 	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		writer.Header().Set("X-Tool", "lcl")
-		var re = regexp.MustCompile(`^(?:([a-zA-Z0-9](?:[-a-zA-Z0-9]{0,61}[a-zA-Z0-9])?)\.)?(?:localhost|(?:[a-zA-Z0-9]{1,2}(?:[-a-zA-Z0-9]{0,252}[a-zA-Z0-9])?)\.(?:[a-zA-Z]{2,63}))(?::(?:\d+))?$`)
-
-		matches := re.FindStringSubmatch(request.Host)
-		if len(matches) < 2 || matches[1] == "" {
+		subdomain, err := getSubdomain(request.Host)
+		if err != nil {
 			fsys, err := fs.Sub(staticPath, "static")
 			if err != nil {
 				panic(err)
 			}
+			log.Println(fmt.Sprintf("Received request on main domain. Serving lcl website"))
 			http.FileServer(http.FS(fsys)).ServeHTTP(writer, request)
 			return
 		}
@@ -119,25 +128,30 @@ func main() {
 
 		switch action {
 		case "noop":
+			log.Println(fmt.Sprintf("Received request on subdomain %s <NOOP>", subdomain))
 			writer.WriteHeader(http.StatusOK)
 			break
 		case "serve":
 			if serveFs != nil {
 				http.FileServer(serveFs).ServeHTTP(writer, request)
+				log.Println(fmt.Sprintf("Received request on subdomain %s <SERVE:%s>", subdomain, serveFs))
 			} else {
 				// serve path
+				log.Println(fmt.Sprintf("Received request on subdomain %s <SERVE:%s>", subdomain, path))
 			}
 			break
 		case "redirect":
+			log.Println(fmt.Sprintf("Received request on subdomain %s <REDIRECT:%s>", subdomain, path))
 			http.Redirect(writer, request, path, http.StatusTemporaryRedirect)
 			break
 		default:
+			log.Println(fmt.Sprintf("Received request on subdomain %s <NOTFOUND>", subdomain))
 			http.NotFound(writer, request)
 			break
 		}
 	})
 
-	fmt.Printf("Starting server at port 8080\n")
+	log.Println("Starting server at port 8080")
 	if err := http.ListenAndServe(":8080", nil); err != nil {
 		log.Fatal(err)
 	}
