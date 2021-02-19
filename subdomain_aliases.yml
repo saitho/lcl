@@ -1,0 +1,20 @@
+aliases:
+  - alias: statusupdater
+    port: 4114
+    certificate:
+      use_custom: false
+    rules:
+      - path: /oauth/zoom/uninstall/
+        action: noop
+      - path: /privacy-policy
+        action: redirect
+        target: https://github.com/saitho/status-updater/blob/master/PRIVACY_POLICY.md
+      - path: /tos
+        action: redirect
+        target: https://github.com/saitho/status-updater/blob/master/TERMS_OF_USE.md
+      - path: /support
+        action: redirect
+        target: https://github.com/saitho/status-updater/issues
+      - path: /zoomverify/verifyzoom.html
+        action: serve
+        target: verifyzoom.html
