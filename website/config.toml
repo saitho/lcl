@@ -1,6 +1,6 @@
 baseURL = "https://lcl.ovh/"
 languageCode = "en-us"
-title = "lcl.ovh – Localhost redirect server"
+title = "lcl.ovh – A localhost redirect server"
 theme = "syna"
 #enableGitInfo = true
 version = "0.0.0"
@@ -21,7 +21,7 @@ unsafe = true
 
 [params]
 name = "lcl.ovh"
-description = "Localhost redirect server"
+description = "A localhost redirect server"
 
 [params.style]
 #background = "secondary"

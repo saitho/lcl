@@ -1,5 +1,5 @@
 +++
-title = "lcl.ovh – Localhost redirect server"
-description = "Localhost redirect server"
+title = "lcl.ovh – A localhost redirect server"
+description = "A localhost redirect server"
 +++
 

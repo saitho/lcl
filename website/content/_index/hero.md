@@ -7,7 +7,7 @@ background = "light" # can influence the text color
 particles = false
 
 title = "lcl.ovh"
-subtitle = "Localhost redirect server"
+subtitle = "A localhost redirect server"
 
 [header]
   image = "header.jpg"
