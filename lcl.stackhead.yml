@@ -1,0 +1,11 @@
+---
+domains:
+  - domain: lcl.ovh
+    expose:
+      - internal_port: 8080
+        external_port: 80
+        service: lcl
+container:
+  services:
+    - name: lcl
+      image: saitho/lcl:latest
