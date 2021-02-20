@@ -91,7 +91,11 @@ func determineAction(aliases map[string]Alias, request *http.Request) (string, s
 	}
 
 	// Default redirect to localhost
-	return "redirect", "http://localhost:" + port + path, nil
+	query := request.URL.RawQuery
+	if query != "" {
+		query = "?" + query
+	}
+	return "redirect", "http://localhost:" + port + path + query, nil
 }
 
 func main() {
